@@ -1,12 +1,14 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Product, CartItem, Theme, AnalyticsData, ProductAnalytics } from '../types';
+import { Product, CartItem, Theme, AnalyticsData } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_THEME } from '../constants';
+import { db } from '../firebase/config';
 
 interface AppContextType {
   products: Product[];
-  setProducts: React.Dispatch<React.SetStateAction<Product[]>>;
+  addProduct: (productData: Omit<Product, 'id'>) => Promise<void>;
+  updateProduct: (product: Product) => Promise<void>;
+  deleteProduct: (productId: string) => Promise<void>;
   cart: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
@@ -37,12 +39,38 @@ function generateSessionId() {
 }
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [products, setProducts] = useLocalStorage<Product[]>('petshop-products', INITIAL_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useLocalStorage<CartItem[]>('petshop-cart', []);
   const [theme, setTheme] = useLocalStorage<Theme>('petshop-theme', INITIAL_THEME);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [analyticsData, setAnalyticsData] = useLocalStorage<AnalyticsData>('petshop-analytics', initialAnalytics);
   const [sessionId, setSessionId] = useState('');
+
+  useEffect(() => {
+    const productsCollectionRef = db.collection('products');
+    
+    const initializeProducts = async () => {
+        const snapshot = await productsCollectionRef.get();
+        if (snapshot.empty) {
+            console.log("No products found, seeding database...");
+            const batch = db.batch();
+            INITIAL_PRODUCTS.forEach(product => {
+                const docRef = db.collection('products').doc(product.id);
+                batch.set(docRef, product);
+            });
+            await batch.commit();
+        }
+    };
+
+    initializeProducts().catch(console.error);
+
+    const unsubscribe = productsCollectionRef.onSnapshot(snapshot => {
+        const productsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
+        setProducts(productsData);
+    });
+    
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     Object.entries(theme).forEach(([key, value]) => {
@@ -70,6 +98,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
     return currentSessionId;
   }
+  
+  const addProduct = async (productData: Omit<Product, 'id'>) => {
+    try {
+      await db.collection('products').add(productData);
+    } catch (error) {
+      console.error("Error adding product: ", error);
+    }
+  };
+
+  const updateProduct = async (product: Product) => {
+    try {
+      const { id, ...productData } = product;
+      await db.collection('products').doc(id).update(productData);
+    } catch (error) {
+      console.error("Error updating product: ", error);
+    }
+  };
+
+  const deleteProduct = async (productId: string) => {
+    try {
+      await db.collection('products').doc(productId).delete();
+    } catch (error) {
+      console.error("Error deleting product: ", error);
+    }
+  };
 
   const addToCart = (product: Product) => {
     setCart(prevCart => {
@@ -128,7 +181,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = () => setIsAdmin(false);
 
   return (
-    <AppContext.Provider value={{ products, setProducts, cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, theme, setTheme, isAdmin, login, logout, analyticsData, trackQuoteCompletion, getSessionId }}>
+    <AppContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, theme, setTheme, isAdmin, login, logout, analyticsData, trackQuoteCompletion, getSessionId }}>
       {children}
     </AppContext.Provider>
   );

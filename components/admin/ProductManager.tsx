@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { Product } from '../../types';
@@ -5,7 +6,7 @@ import { ProductForm } from './ProductForm';
 import { Edit, Trash2, PlusCircle } from 'lucide-react';
 
 export const ProductManager: React.FC = () => {
-  const { products, setProducts } = useAppContext();
+  const { products, addProduct, updateProduct, deleteProduct } = useAppContext();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -21,15 +22,15 @@ export const ProductManager: React.FC = () => {
 
   const handleDelete = (productId: string) => {
     if (window.confirm('Tem certeza que deseja excluir este produto?')) {
-      setProducts(prev => prev.filter(p => p.id !== productId));
+      deleteProduct(productId);
     }
   };
 
-  const handleSave = (product: Product) => {
-    if (editingProduct) {
-      setProducts(prev => prev.map(p => (p.id === product.id ? product : p)));
+  const handleSave = (productData: Product | Omit<Product, 'id'>) => {
+    if ('id' in productData) {
+      updateProduct(productData as Product);
     } else {
-      setProducts(prev => [...prev, product]);
+      addProduct(productData as Omit<Product, 'id'>);
     }
     setIsFormOpen(false);
   };

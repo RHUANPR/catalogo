@@ -1,60 +1,56 @@
-
 import React, { useState, useEffect } from 'react';
 import { Product } from '../../types';
-import { X, Image, Link2 } from 'lucide-react';
+import { X, Link as LinkIcon } from 'lucide-react';
 
 interface ProductFormProps {
   product?: Product | null;
-  onSave: (product: Product) => void;
+  onSave: (product: Product | Omit<Product, 'id'>) => void;
   onClose: () => void;
 }
 
-export const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onClose }) => {
-  const [formData, setFormData] = useState<Omit<Product, 'id'>>({
-    name: '',
-    description: '',
-    price: 0,
-    category: '',
-    imageUrl: '',
-  });
-  const [imageSource, setImageSource] = useState<'url' | 'file'>('url');
+const emptyProduct: Omit<Product, 'id'> = {
+  name: '',
+  description: '',
+  price: 0,
+  category: '',
+  imageUrl: '',
+};
 
+export const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onClose }) => {
+  const [formData, setFormData] = useState<Omit<Product, 'id'>>(emptyProduct);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
   useEffect(() => {
     if (product) {
-      setFormData(product);
-      if (product.imageUrl && product.imageUrl.startsWith('data:image')) {
-        setImageSource('file');
-      } else {
-        setImageSource('url');
-      }
+        const { id, ...productData } = product;
+        setFormData(productData);
+        if (product.imageUrl) {
+            setImagePreview(product.imageUrl);
+        }
     } else {
-      setFormData({ name: '', description: '', price: 0, category: '', imageUrl: 'https://picsum.photos/400/400' });
-      setImageSource('url');
+        setFormData(emptyProduct);
+        setImagePreview(null);
     }
   }, [product]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: name === 'price' ? parseFloat(value) || 0 : value }));
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData(prev => ({ ...prev, imageUrl: reader.result as string }));
-      };
-      reader.readAsDataURL(file);
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'price' ? parseFloat(value) || 0 : value,
+    }));
+     if (name === 'imageUrl') {
+        setImagePreview(value);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const productToSave: Product = {
-      ...formData,
-      id: product?.id || `prod_${new Date().getTime()}`,
-    };
+    if (!formData.imageUrl) {
+        alert("Por favor, adicione uma imagem para o produto.");
+        return;
+    }
+    const productToSave = product ? { ...formData, id: product.id } : formData;
     onSave(productToSave);
   };
 
@@ -75,31 +71,27 @@ export const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onClo
           
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Imagem do Produto</label>
-            <div className="flex border border-gray-300 rounded-lg p-1 w-min mb-3 bg-base-200">
-              <button type="button" onClick={() => setImageSource('url')} className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-2 ${imageSource === 'url' ? 'bg-primary text-white shadow' : 'text-slate-600 hover:bg-gray-100'}`}>
-                <Link2 size={16}/> URL
-              </button>
-              <button type="button" onClick={() => setImageSource('file')} className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-2 ${imageSource === 'file' ? 'bg-primary text-white shadow' : 'text-slate-600 hover:bg-gray-100'}`}>
-                <Image size={16}/> Upload
-              </button>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                {imagePreview && <img src={imagePreview} alt="Pré-visualização" className="w-24 h-24 sm:w-32 sm:h-32 object-cover rounded-lg border-2 border-base-200 flex-shrink-0" />}
+                <div className="relative flex-grow w-full">
+                    <LinkIcon size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"/>
+                    <input 
+                        name="imageUrl" 
+                        value={formData.imageUrl} 
+                        onChange={handleChange} 
+                        placeholder="Cole uma URL de imagem" 
+                        className="w-full pl-10 pr-3 py-3 border border-base-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        required 
+                    />
+                </div>
             </div>
-            {imageSource === 'url' ? (
-              <input name="imageUrl" value={formData.imageUrl.startsWith('data:') ? '' : formData.imageUrl} onChange={handleChange} placeholder="https://exemplo.com/imagem.png" className="w-full p-3 border border-base-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" />
-            ) : (
-              <input type="file" accept="image/*" onChange={handleFileChange} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-opacity-90 cursor-pointer" />
-            )}
           </div>
-
-          {formData.imageUrl && (
-            <div>
-              <p className="text-sm font-medium text-slate-600 mb-2">Pré-visualização:</p>
-              <img src={formData.imageUrl} alt="Pré-visualização" className="w-32 h-32 object-cover rounded-lg border-2 border-base-200" />
-            </div>
-          )}
-
+          
           <div className="flex justify-end gap-4 pt-4 border-t mt-2">
             <button type="button" onClick={onClose} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold">Cancelar</button>
-            <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 font-semibold">Salvar</button>
+            <button type="submit" className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-opacity-90 font-semibold">
+                Salvar
+            </button>
           </div>
         </form>
       </div>

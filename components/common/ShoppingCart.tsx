@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { ShoppingCart as ShoppingCartIcon, X, Plus, Minus, Trash2 } from 'lucide-react';
@@ -7,7 +6,6 @@ const CheckoutForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
     const { cart, cartTotal, clearCart, trackQuoteCompletion } = useAppContext();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [whatsapp, setWhatsapp] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -15,14 +13,17 @@ const CheckoutForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
         let message = `Olá! Gostaria de um orçamento para os seguintes itens:\n\n`;
         cart.forEach(item => {
             message += `*${item.name}* (x${item.quantity})\n`;
+            if (item.imageUrl) {
+                message += `Imagem: ${item.imageUrl}\n`;
+            }
             message += `Subtotal: ${ (item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }\n\n`;
         });
         message += `*Total do Orçamento: ${cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*\n\n`;
         message += `Nome: ${name}\n`;
         message += `Email: ${email}`;
 
-        const whatsappNumber = whatsapp.replace(/\D/g, '');
-        const whatsappUrl = `https://wa.me/55${whatsappNumber}?text=${encodeURIComponent(message)}`;
+        const fixedWhatsappNumber = '5514998971450';
+        const whatsappUrl = `https://wa.me/${fixedWhatsappNumber}?text=${encodeURIComponent(message)}`;
         
         window.open(whatsappUrl, '_blank');
         trackQuoteCompletion();
@@ -35,15 +36,11 @@ const CheckoutForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
             <h3 className="text-lg font-semibold text-secondary">Seus Dados</h3>
             <div>
                 <label htmlFor="name" className="block text-sm font-medium text-slate-600">Nome Completo</label>
-                <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" required />
+                <input type="text" id="name" value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-slate-900" required />
             </div>
             <div>
                 <label htmlFor="email" className="block text-sm font-medium text-slate-600">Email</label>
-                <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" required />
-            </div>
-            <div>
-                <label htmlFor="whatsapp" className="block text-sm font-medium text-slate-600">WhatsApp (com DDD)</label>
-                <input type="tel" id="whatsapp" placeholder="Ex: 14997280917" value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary" required />
+                <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary text-slate-900" required />
             </div>
             <button type="submit" className="w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-opacity-90 transition-colors font-semibold">
                 Receber Orçamento no WhatsApp
