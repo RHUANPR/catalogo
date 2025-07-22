@@ -1,8 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Product, CartItem, Theme, AnalyticsData } from '../types';
-import { INITIAL_PRODUCTS, INITIAL_THEME } from '../constants';
+import { INITIAL_THEME } from '../constants';
 import { db } from '../firebase/config';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+} from 'firebase/firestore';
 
 interface AppContextType {
   products: Product[];
@@ -47,28 +55,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [sessionId, setSessionId] = useState('');
 
   useEffect(() => {
-    const productsCollectionRef = db.collection('products');
+    const productsCollectionRef = collection(db, 'products');
     
-    const initializeProducts = async () => {
-        const snapshot = await productsCollectionRef.get();
-        if (snapshot.empty) {
-            console.log("No products found, seeding database...");
-            const batch = db.batch();
-            INITIAL_PRODUCTS.forEach(product => {
-                const docRef = db.collection('products').doc(product.id);
-                batch.set(docRef, product);
-            });
-            await batch.commit();
-        }
-    };
-
-    initializeProducts().catch(console.error);
-
-    const unsubscribe = productsCollectionRef.onSnapshot(snapshot => {
+    // Set up the real-time listener for products
+    const unsubscribe = onSnapshot(productsCollectionRef, snapshot => {
         const productsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
         setProducts(productsData);
     });
     
+    // Clean up the listener when the component unmounts
     return () => unsubscribe();
   }, []);
 
@@ -101,7 +96,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   
   const addProduct = async (productData: Omit<Product, 'id'>) => {
     try {
-      await db.collection('products').add(productData);
+      await addDoc(collection(db, 'products'), productData);
     } catch (error) {
       console.error("Error adding product: ", error);
     }
@@ -110,7 +105,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const updateProduct = async (product: Product) => {
     try {
       const { id, ...productData } = product;
-      await db.collection('products').doc(id).update(productData);
+      const productDoc = doc(db, 'products', id);
+      await updateDoc(productDoc, productData);
     } catch (error) {
       console.error("Error updating product: ", error);
     }
@@ -118,7 +114,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const deleteProduct = async (productId: string) => {
     try {
-      await db.collection('products').doc(productId).delete();
+      const productDoc = doc(db, 'products', productId);
+      await deleteDoc(productDoc);
     } catch (error) {
       console.error("Error deleting product: ", error);
     }
