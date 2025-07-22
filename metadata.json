@@ -1,0 +1,6 @@
+{
+  "name": "Catálogo Interativo Petshop",
+  "description": "Um catálogo interativo para um petshop onde os clientes podem visualizar produtos, montar um orçamento e recebê-lo via WhatsApp. Inclui um painel administrativo completo para gerenciamento de produtos, personalização de layout e análise de dados de vendas.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
