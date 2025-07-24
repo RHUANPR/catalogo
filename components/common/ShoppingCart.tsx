@@ -22,7 +22,7 @@ const CheckoutForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
         message += `Nome: ${name}\n`;
         message += `Email: ${email}`;
 
-        const fixedWhatsappNumber = '5514998971450';
+        const fixedWhatsappNumber = '5514997000022';
         const whatsappUrl = `https://wa.me/${fixedWhatsappNumber}?text=${encodeURIComponent(message)}`;
         
         window.open(whatsappUrl, '_blank');

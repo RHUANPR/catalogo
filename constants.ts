@@ -1,7 +1,7 @@
 
 import { Product, Theme } from './types';
 
-export const ADMIN_PASSWORD = 'admin'; // For demonstration purposes
+export const ADMIN_PASSWORD = 'Rhuan123'; // For demonstration purposes
 
 export const INITIAL_PRODUCTS: Product[] = [];
 

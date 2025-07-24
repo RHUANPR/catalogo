@@ -29,7 +29,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
                 <Dog size={40} />
             </div>
             <h1 className="text-2xl font-bold text-center text-secondary">Painel Administrativo</h1>
-            <p className="text-slate-500">PetShop Alegria</p>
+            <p className="text-slate-500">Coleiras & charme </p>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="relative">
