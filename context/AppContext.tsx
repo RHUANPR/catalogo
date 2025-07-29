@@ -1,22 +1,26 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { Product, CartItem, Theme, AnalyticsData } from '../types';
-import { INITIAL_THEME } from '../constants';
+import { INITIAL_PRODUCTS, INITIAL_THEME } from '../constants';
 import { db } from '../firebase/config';
 import { 
   collection, 
-  onSnapshot, 
+  getDocs, 
+  onSnapshot,
+  query,
   doc, 
   addDoc, 
   updateDoc, 
   deleteDoc, 
+  writeBatch 
 } from 'firebase/firestore';
 
 interface AppContextType {
   products: Product[];
-  addProduct: (productData: Omit<Product, 'id'>) => Promise<void>;
+  addProduct: (productData: Omit<Product, 'id' | 'order'>) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
+  updateProductsOrder: (products: Product[]) => Promise<void>;
   cart: CartItem[];
   addToCart: (product: Product) => void;
   removeFromCart: (productId: string) => void;
@@ -31,6 +35,7 @@ interface AppContextType {
   analyticsData: AnalyticsData;
   trackQuoteCompletion: () => void;
   getSessionId: () => string;
+  resetAnalytics: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -57,13 +62,30 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const productsCollectionRef = collection(db, 'products');
     
-    // Set up the real-time listener for products
-    const unsubscribe = onSnapshot(productsCollectionRef, snapshot => {
+    const initializeProducts = async () => {
+        const snapshot = await getDocs(productsCollectionRef);
+        if (snapshot.empty) {
+            console.log("No products found, seeding database...");
+            const batch = writeBatch(db);
+            INITIAL_PRODUCTS.forEach(product => {
+                const docRef = doc(db, 'products', product.id);
+                batch.set(docRef, product);
+            });
+            await batch.commit();
+        }
+    };
+
+    initializeProducts().catch(console.error);
+
+    const q = query(productsCollectionRef);
+    const unsubscribe = onSnapshot(q, snapshot => {
         const productsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
+        // Sort client-side, providing a fallback for products without an 'order' property.
+        // Products without an 'order' will be displayed at the end.
+        productsData.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
         setProducts(productsData);
     });
     
-    // Clean up the listener when the component unmounts
     return () => unsubscribe();
   }, []);
 
@@ -94,9 +116,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return currentSessionId;
   }
   
-  const addProduct = async (productData: Omit<Product, 'id'>) => {
+  const addProduct = async (productData: Omit<Product, 'id' | 'order'>) => {
     try {
-      await addDoc(collection(db, 'products'), productData);
+      const maxOrder = products.length > 0 ? Math.max(...products.map(p => p.order).filter(o => o !== null && o !== undefined)) : -1;
+      const newProductData = { ...productData, order: maxOrder + 1 };
+      await addDoc(collection(db, 'products'), newProductData);
     } catch (error) {
       console.error("Error adding product: ", error);
     }
@@ -109,6 +133,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await updateDoc(productDoc, productData);
     } catch (error) {
       console.error("Error updating product: ", error);
+    }
+  };
+
+  const updateProductsOrder = async (reorderedProducts: Product[]) => {
+    try {
+      const batch = writeBatch(db);
+      reorderedProducts.forEach((product, index) => {
+        const productDocRef = doc(db, 'products', product.id);
+        batch.update(productDocRef, { order: index });
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error updating products order: ", error);
     }
   };
 
@@ -172,13 +209,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setAnalyticsData(prev => ({...prev, quotesCompleted: prev.quotesCompleted + 1 }));
   }
 
+  const resetAnalytics = () => {
+    if (window.confirm('Tem certeza que deseja resetar todos os dados dos gráficos? Esta ação não pode ser desfeita.')) {
+      setAnalyticsData(initialAnalytics);
+    }
+  };
+
   const cartTotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
 
   const login = () => setIsAdmin(true);
   const logout = () => setIsAdmin(false);
 
   return (
-    <AppContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, theme, setTheme, isAdmin, login, logout, analyticsData, trackQuoteCompletion, getSessionId }}>
+    <AppContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, updateProductsOrder, cart, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, theme, setTheme, isAdmin, login, logout, analyticsData, trackQuoteCompletion, getSessionId, resetAnalytics }}>
       {children}
     </AppContext.Provider>
   );

@@ -13,7 +13,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-300 flex flex-col">
-      <img src={product.imageUrl} alt={product.name} className="w-full h-48 object-cover" />
+      <img src={product.imageUrl} alt={product.name} className="w-70 h-48 object-cover" />
       <div className="p-4 flex flex-col flex-grow">
         <h3 className="text-lg font-semibold text-secondary">{product.name}</h3>
         <p className="text-sm text-slate-500 mt-1 flex-grow">{product.description}</p>

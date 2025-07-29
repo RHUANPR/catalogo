@@ -4,7 +4,7 @@ import { X, Link as LinkIcon } from 'lucide-react';
 
 interface ProductFormProps {
   product?: Product | null;
-  onSave: (product: Product | Omit<Product, 'id'>) => void;
+  onSave: (product: Product | Omit<Product, 'id' | 'order'>) => void;
   onClose: () => void;
 }
 
@@ -14,6 +14,7 @@ const emptyProduct: Omit<Product, 'id'> = {
   price: 0,
   category: '',
   imageUrl: '',
+  order: 0,
 };
 
 export const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onClose }) => {
