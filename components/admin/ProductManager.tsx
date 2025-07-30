@@ -11,9 +11,10 @@ export const ProductManager: React.FC = () => {
   const [localProducts, setLocalProducts] = useState<Product[]>(products);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
-  const dragItemIndex = useRef<number | null>(null);
-  const dragOverItemIndex = useRef<number | null>(null);
+  const dragItem = useRef<number | null>(null);
+  const dragOverItem = useRef<number | null>(null);
   
   useEffect(() => {
     setLocalProducts(products);
@@ -44,40 +45,46 @@ export const ProductManager: React.FC = () => {
     setIsFormOpen(false);
   };
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    dragItemIndex.current = index;
-    // For smooth dragging visual
-    setTimeout(() => {
-      if (e.target instanceof HTMLElement) {
-        e.target.classList.add('opacity-50');
-      }
-    }, 0);
+  const handleDragStart = (index: number) => {
+    dragItem.current = index;
+    setDraggedIndex(index);
   };
 
-  const handleDragEnter = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (dragItemIndex.current === null || dragItemIndex.current === index) return;
-    
-    dragOverItemIndex.current = index;
+  const handleDragEnter = (index: number) => {
+    if (dragItem.current === null || dragItem.current === index) return;
+
+    dragOverItem.current = index;
     const newProducts = [...localProducts];
-    const draggedItem = newProducts.splice(dragItemIndex.current, 1)[0];
-    newProducts.splice(index, 0, draggedItem);
+    const draggedItemContent = newProducts.splice(dragItem.current, 1)[0];
+    newProducts.splice(dragOverItem.current, 0, draggedItemContent);
     
-    dragItemIndex.current = index;
+    dragItem.current = dragOverItem.current;
+    dragOverItem.current = null;
     setLocalProducts(newProducts);
   };
 
-  const handleDragEnd = (e: React.DragEvent) => {
-    if (e.target instanceof HTMLElement) {
-      e.target.classList.remove('opacity-50');
+  const handleDragEnd = () => {
+    if (draggedIndex !== null) {
+      updateProductsOrder(localProducts);
     }
-    updateProductsOrder(localProducts);
-    dragItemIndex.current = null;
-    dragOverItemIndex.current = null;
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDraggedIndex(null);
   };
-  
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (dragItem.current === null) return;
+    const touch = e.touches[0];
+    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (targetElement) {
+      const listElement = targetElement.closest('[data-product-index]');
+      if (listElement instanceof HTMLElement) {
+        const index = parseInt(listElement.dataset.productIndex || '-1', 10);
+        if (index !== -1) {
+          handleDragEnter(index);
+        }
+      }
+    }
   };
 
   return (
@@ -95,12 +102,16 @@ export const ProductManager: React.FC = () => {
         {localProducts.map((product, index) => (
           <div 
             key={product.id} 
-            className="bg-white rounded-lg shadow p-4"
+            data-product-index={index}
+            className={`bg-white rounded-lg shadow p-4 transition-all ${draggedIndex === index ? 'shadow-2xl scale-105 opacity-80' : 'shadow'}`}
             draggable
-            onDragStart={(e) => handleDragStart(e, index)}
-            onDragEnter={(e) => handleDragEnter(e, index)}
+            onDragStart={() => handleDragStart(index)}
+            onDragEnter={() => handleDragEnter(index)}
             onDragEnd={handleDragEnd}
-            onDragOver={handleDragOver}
+            onDragOver={(e) => e.preventDefault()}
+            onTouchStart={() => handleDragStart(index)}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleDragEnd}
           >
             <div className="flex items-start gap-4">
               <div className="cursor-grab touch-none text-slate-400 pt-1">
@@ -111,6 +122,23 @@ export const ProductManager: React.FC = () => {
                 <p className="font-semibold text-secondary leading-tight">{product.name}</p>
                 <p className="text-sm text-slate-500 mt-1">{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                 <p className="text-xs text-slate-600 bg-slate-100 inline-block px-2 py-0.5 rounded-full mt-2">{product.category}</p>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {product.sizes?.map((s, idx) => {
+                    if (!s || typeof s.name !== 'string') return null;
+                    const priceDisplay = typeof s.price === 'number' ? `(${s.price.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})` : '';
+                    return (
+                      <span key={`${product.id}-size-${s.name}-${idx}`} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                        {s.name} {priceDisplay}
+                      </span>
+                    );
+                  })}
+                  {product.colors?.map((c, idx) => {
+                     if (!c || typeof c.name !== 'string') return null;
+                     return (
+                      <span key={`${product.id}-color-${c.name}-${idx}`} className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">{c.name}</span>
+                     );
+                  })}
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 border-t mt-4 pt-3">
@@ -147,19 +175,19 @@ export const ProductManager: React.FC = () => {
             <tr className="bg-base-200 text-left text-sm font-semibold text-secondary uppercase tracking-wider">
               <th className="p-4 w-12"></th>
               <th className="p-4">Produto</th>
-              <th className="p-4">Categoria</th>
-              <th className="p-4">Preço</th>
+              <th className="p-4">Variações</th>
+              <th className="p-4">Preço Padrão</th>
               <th className="p-4 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-base-200" onDragOver={handleDragOver}>
+          <tbody className="divide-y divide-base-200" onDragOver={(e) => e.preventDefault()}>
             {localProducts.length > 0 ? localProducts.map((product, index) => (
               <tr 
                 key={product.id} 
-                className="hover:bg-slate-50"
+                className={`transition-all ${draggedIndex === index ? 'opacity-50' : 'opacity-100'}`}
                 draggable
-                onDragStart={(e) => handleDragStart(e, index)}
-                onDragEnter={(e) => handleDragEnter(e, index)}
+                onDragStart={() => handleDragStart(index)}
+                onDragEnter={() => handleDragEnter(index)}
                 onDragEnd={handleDragEnd}
               >
                 <td className="p-4 text-center cursor-grab touch-none text-slate-400">
@@ -169,11 +197,29 @@ export const ProductManager: React.FC = () => {
                     <img src={product.imageUrl} alt={product.name} className="w-12 h-12 object-cover rounded-md" />
                     <div>
                         <p className="font-semibold">{product.name}</p>
-                        <p className="text-xs text-slate-500">{product.id}</p>
+                        <span className="text-xs font-medium text-slate-700 bg-slate-200 px-2 py-1 rounded-full">{product.category}</span>
                     </div>
                 </td>
-                <td className="p-4">
-                    <span className="text-xs font-medium text-slate-700 bg-slate-200 px-2 py-1 rounded-full">{product.category}</span>
+                 <td className="p-4">
+                    <div className="flex flex-wrap gap-1">
+                        {product.sizes?.map((s, idx) => {
+                            if (!s || typeof s.name !== 'string') return null;
+                            const priceDisplay = typeof s.price === 'number' ? `(${s.price.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})` : '';
+                            return (
+                                <span key={`${product.id}-d-size-${s.name}-${idx}`} className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                                    {s.name} {priceDisplay}
+                                </span>
+                            );
+                        })}
+                        {product.colors?.map((c, idx) => {
+                            if (!c || typeof c.name !== 'string') return null;
+                            return (
+                                <span key={`${product.id}-d-color-${c.name}-${idx}`} className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                                    {c.name}
+                                </span>
+                            );
+                        })}
+                    </div>
                 </td>
                 <td className="p-4 font-medium text-slate-700">{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                 <td className="p-4">

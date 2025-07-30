@@ -1,23 +1,31 @@
 
+
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { ADMIN_PASSWORD } from '../../constants';
 import { Dog, KeyRound } from 'lucide-react';
 
-interface AdminLoginProps {
-  onLogin: () => void;
-}
-
-export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
+export const AdminLogin: React.FC = () => {
+  const { login } = useAppContext();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      onLogin();
-    } else {
-      setError('Senha incorreta.');
+    setError('');
+
+    if (!password) {
+        setError("Por favor, preencha a senha.");
+        return;
+    }
+
+    setLoading(true);
+    try {
+      await login(password);
+    } catch (err: any) {
+      setError(err.message || 'Ocorreu um erro inesperado.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -29,7 +37,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
                 <Dog size={40} />
             </div>
             <h1 className="text-2xl font-bold text-center text-secondary">Painel Administrativo</h1>
-            <p className="text-slate-500">Coleiras & charme </p>
+            <p className="text-slate-500">PetShop Alegria</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="relative">
@@ -42,12 +50,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Senha"
               className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+              required
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           <div>
-            <button type="submit" className="w-full py-2 px-4 bg-primary text-white font-semibold rounded-md hover:bg-opacity-90 transition-colors">
-              Entrar
+            <button type="submit" disabled={loading} className="w-full py-2 px-4 bg-primary text-white font-semibold rounded-md hover:bg-opacity-90 transition-colors disabled:bg-primary/70 disabled:cursor-not-allowed flex justify-center items-center">
+              {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </div>
         </form>

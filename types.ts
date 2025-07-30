@@ -1,4 +1,15 @@
 
+
+export interface ColorOption {
+  name: string;
+  imageUrl: string;
+}
+
+export interface SizeOption {
+  name: string;
+  price: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -6,10 +17,20 @@ export interface Product {
   price: number;
   category: string;
   imageUrl: string;
+  order: number;
+  sizes?: SizeOption[];
+  colors?: ColorOption[];
 }
 
-export interface CartItem extends Product {
+export interface CartItem {
+  cartItemId: string; // Unique ID for this specific cart entry (e.g., product-id-size-color)
+  id: string; // The original product ID
+  name: string;
+  price: number;
+  imageUrl: string; // Will hold the variant image URL if applicable
   quantity: number;
+  selectedSize?: string;
+  selectedColor?: ColorOption;
 }
 
 export interface Theme {

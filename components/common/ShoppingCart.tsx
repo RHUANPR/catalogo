@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { ShoppingCart as ShoppingCartIcon, X, Plus, Minus, Trash2 } from 'lucide-react';
@@ -12,17 +13,29 @@ const CheckoutForm: React.FC<{onSuccess: () => void}> = ({onSuccess}) => {
         
         let message = `Olá! Gostaria de um orçamento para os seguintes itens:\n\n`;
         cart.forEach(item => {
-            message += `*${item.name}* (x${item.quantity})\n`;
-            if (item.imageUrl) {
-                message += `Imagem: ${item.imageUrl}\n`;
+            let itemName = item.name;
+            const variations = [];
+            
+            if (item.selectedSize) {
+                variations.push(`Tamanho: ${item.selectedSize}`);
             }
+            if (item.selectedColor?.name) {
+                variations.push(`Cor: ${item.selectedColor.name}`);
+            }
+
+            if (variations.length > 0) {
+                itemName += ` (${variations.join(', ')})`;
+            }
+
+            message += `*${itemName}* (x${item.quantity})\n`;
             message += `Subtotal: ${ (item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }\n\n`;
         });
+
         message += `*Total do Orçamento: ${cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}*\n\n`;
         message += `Nome: ${name}\n`;
         message += `Email: ${email}`;
 
-        const fixedWhatsappNumber = '5514997000022';
+        const fixedWhatsappNumber = '5514998971450';
         const whatsappUrl = `https://wa.me/${fixedWhatsappNumber}?text=${encodeURIComponent(message)}`;
         
         window.open(whatsappUrl, '_blank');
@@ -85,18 +98,20 @@ export const ShoppingCart: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   {cart.map(item => (
-                    <div key={item.id} className="flex items-center space-x-4">
+                    <div key={item.cartItemId} className="flex items-center space-x-4">
                       <img src={item.imageUrl} alt={item.name} className="w-16 h-16 rounded-md object-cover"/>
                       <div className="flex-grow">
                         <h4 className="font-semibold text-secondary">{item.name}</h4>
-                        <p className="text-sm text-slate-500">{item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
+                        {item.selectedSize && <p className="text-xs text-slate-500">Tamanho: {item.selectedSize}</p>}
+                        {item.selectedColor && <p className="text-xs text-slate-500">Cor: {item.selectedColor.name}</p>}
+                        <p className="text-sm text-slate-500 mt-1">{item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</p>
                         <div className="flex items-center mt-2">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-1 rounded-full bg-base-300 hover:bg-slate-400"><Minus size={14}/></button>
+                          <button onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)} className="p-1 rounded-full bg-base-300 hover:bg-slate-400"><Minus size={14}/></button>
                           <span className="px-3">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-1 rounded-full bg-base-300 hover:bg-slate-400"><Plus size={14}/></button>
+                          <button onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)} className="p-1 rounded-full bg-base-300 hover:bg-slate-400"><Plus size={14}/></button>
                         </div>
                       </div>
-                      <button onClick={() => removeFromCart(item.id)}><Trash2 size={20} className="text-red-500 hover:text-red-700"/></button>
+                      <button onClick={() => removeFromCart(item.cartItemId)}><Trash2 size={20} className="text-red-500 hover:text-red-700"/></button>
                     </div>
                   ))}
                 </div>
