@@ -51,7 +51,7 @@ export const HomePage: React.FC = () => {
       </main>
       <footer className="bg-secondary text-white mt-12 py-6">
         <div className="container mx-auto text-center">
-            <p>&copy; {new Date().getFullYear()} PetShop Alegria. Todos os direitos reservados.</p>
+            <p>&copy; {new Date().getFullYear()} Coleiras & Charme. Todos os direitos reservados.</p>
         </div>
       </footer>
     </div>
